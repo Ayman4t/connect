@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SonicVault - النقل الصوتي الخفي</title>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#04040a;--panel:#0b0b16;--line:#1a1a30;--g:#00ff9d;--c:#00f3ff;--r:#ff0055;--tx:#d8e6f0;--mut:#6b7a90}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--tx);font-family:'Cairo',system-ui,sans-serif;min-height:100%}
+body{padding:max(14px,env(safe-area-inset-top)) 14px max(20px,env(safe-area-inset-bottom));max-width:720px;margin:auto;background-image:radial-gradient(circle at 50% -10%,#0b1a2a 0,transparent 55%)}
+body.flash{animation:fl .7s}
+@keyframes fl{0%{box-shadow:inset 0 0 120px #00ff9d}100%{box-shadow:inset 0 0 0 transparent}}
+header{text-align:center;padding:10px 0 14px}
+h1{font-size:30px;font-weight:900;letter-spacing:.5px;color:var(--c);text-shadow:0 0 18px #00f3ff88}
+h1 small{display:block;font-size:13px;font-weight:400;color:var(--mut);text-shadow:none;margin-top:2px}
+.tabs,.modes{display:flex;gap:8px;margin-bottom:10px}
+.tabs button,.modes button{flex:1;font-family:inherit;font-weight:700;font-size:14px;padding:11px 6px;background:var(--panel);color:var(--mut);border:1px solid var(--line);border-radius:10px;cursor:pointer}
+.tabs button.on.tx{color:var(--c);border-color:var(--c);box-shadow:0 0 14px #00f3ff44}
+.tabs button.on.rx{color:var(--g);border-color:var(--g);box-shadow:0 0 14px #00ff9d44}
+.modes button{font-size:12.5px;font-weight:400}
+.modes button.on{color:var(--tx);border-color:#4a5a78;background:#12122a}
+canvas{width:100%;height:300px;display:block;background:#02020a;border:1px solid var(--line);border-radius:14px;margin-bottom:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+textarea{width:100%;min-height:84px;resize:vertical;background:#05050e;color:var(--c);border:1px solid #12324a;border-radius:10px;padding:10px;font-family:'Fira Code','Cairo',monospace;font-size:15px;direction:auto}
+textarea:focus{outline:2px solid var(--c)}
+.row{display:flex;gap:8px;margin-top:10px;flex-wrap:wrap}
+.btn{flex:1;min-width:120px;font-family:inherit;font-weight:900;font-size:15px;padding:13px;border:0;border-radius:10px;cursor:pointer;color:#02020a}
+.btn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+.btn.c{background:var(--c)}.btn.g{background:var(--g)}.btn.r{background:var(--r);color:#fff}
+.btn.ghost{background:transparent;color:var(--tx);border:1px solid #33405c;font-weight:700}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.mono{font-family:'Fira Code',monospace;direction:ltr}
+.big{text-align:center;padding:6px 0}
+#cur{font-size:56px;font-weight:900;color:var(--c);text-shadow:0 0 22px #00f3ffaa;min-height:74px;line-height:74px}
+#chars{display:flex;flex-wrap:wrap;gap:3px;justify-content:center;margin:6px 0;min-height:30px;direction:ltr}
+#chars span{padding:2px 6px;border-radius:5px;background:#0d0d1c;color:var(--mut);font-family:'Fira Code','Cairo',monospace;font-size:15px;border:1px solid transparent}
+#chars span.on{color:#02020a;background:var(--c);box-shadow:0 0 12px var(--c)}
+#chars span.done{color:var(--c)}
+.bar{height:5px;background:#10101f;border-radius:5px;overflow:hidden;margin-top:8px}
+.bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--c),var(--g))}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.stat{background:#05050e;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+.stat b{display:block;font-family:'Fira Code',monospace;font-size:17px;color:var(--g);direction:ltr}
+.stat span{font-size:11.5px;color:var(--mut)}
+#rxbox{min-height:70px;font-family:'Fira Code','Cairo',monospace;font-size:16px;color:var(--g);background:#03100a;border:1px solid #0b3b27;border-radius:10px;padding:10px;margin-top:10px;word-break:break-all;direction:auto}
+#live{color:#4d8f74;font-size:14px;min-height:22px;margin-top:8px;font-family:'Fira Code','Cairo',monospace;direction:auto}
+#status{margin-top:8px;font-size:13.5px;color:var(--mut)}
+.msg{padding:9px 10px;border-radius:9px;background:#05050e;border:1px solid var(--line);margin-top:8px;font-family:'Fira Code','Cairo',monospace;word-break:break-all;direction:auto}
+.msg small{display:block;font-family:'Cairo',sans-serif;font-size:11.5px;color:var(--mut);margin-top:3px}
+.ok{color:var(--g)}.bad{color:var(--r)}
+.hide{display:none}
+.tips{font-size:12.5px;color:var(--mut);line-height:1.9}
+.tips b{color:var(--tx)}
+@media (prefers-reduced-motion:reduce){body.flash{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <h1>SonicVault<small>النقل الصوتي الخفي بدون إنترنت أو واي فاي أو بلوتوث | AymanStack</small></h1>
+</header>
+
+<div class="tabs" role="tablist">
+  <button id="tabTx" class="on tx" role="tab">وضع الإرسال الصوتي (Transmitter)</button>
+  <button id="tabRx" class="rx" role="tab">وضع الرادار المستقبِل (Receiver)</button>
+</div>
+<div class="modes">
+  <button id="mStealth" class="on">التردد الخفي (Stealth 17kHz - 19kHz)</button>
+  <button id="mAudible">التردد المسموع القوي (2kHz - 5kHz)</button>
+</div>
+
+<canvas id="cv" aria-label="راسم الطيف"></canvas>
+
+<section id="pTx" class="card">
+  <textarea id="msg" placeholder="اكتب الرسالة السرية أو كلمة المرور هنا..." maxlength="120"></textarea>
+  <div class="row mono" style="margin-top:4px;color:var(--mut);font-size:12px"><span id="cnt">0 / 120 بايت</span></div>
+  <div class="row">
+    <button id="send" class="btn c">بث الرسالة صوتياً</button>
+    <button id="test" class="btn ghost">نغمة اختبار</button>
+    <button id="stopTx" class="btn r hide">إيقاف</button>
+  </div>
+  <div class="big"><div id="cur" class="mono">--</div><div id="curHz" class="mono" style="color:var(--mut);font-size:13px">0 Hz</div></div>
+  <div id="chars"></div>
+  <div class="bar"><i id="prog"></i></div>
+</section>
+
+<section id="pRx" class="card hide">
+  <div class="stats">
+    <div class="stat"><b id="hz">---</b><span>التردد الأقوى (Hz)</span></div>
+    <div class="stat"><b id="db">---</b><span>القوة (dB)</span></div>
+    <div class="stat"><b id="snr">---</b><span>فرق الإشارة عن الضوضاء</span></div>
+  </div>
+  <div class="row">
+    <button id="listen" class="btn g">تشغيل الرادار</button>
+    <button id="calib" class="btn ghost" disabled>معايرة الضوضاء</button>
+  </div>
+  <div id="status">الرادار متوقف. اضغط تشغيل ثم اسمح باستخدام الميكروفون.</div>
+  <div id="live"></div>
+  <div id="rxbox">الرسالة المستلمة ستظهر هنا...</div>
+  <div id="log"></div>
+</section>
+
+<section class="card tips">
+  <b>للحصول على أفضل نتيجة:</b> افتح الصفحة على الهاتفين قبل تفعيل وضع الطيران (يلزم رابط HTTPS أو localhost ليعمل الميكروفون) • ارفع صوت المرسل للحد الأقصى • اجعل الهاتفين على بعد 10 إلى 30 سم وسماعة المرسل باتجاه ميكروفون المستقبل • إذا كانت سماعة أو ميكروفون أي هاتف ضعيفة في الترددات العالية فاستخدم الوضع المسموع • اضغط "نغمة اختبار" على المرسل وراقب القراءة بالهرتز على المستقبل.
+</section>
+
+<script>
+(()=>{
+'use strict';
+const $=id=>document.getElementById(id);
+const NT=18, START=16, END=17;           // 16 نغمة بيانات (نصف بايت) + بداية + نهاية
+const SYM_MS=0.12, LONG_MS=0.26, GAP=0.06;
+const MODES={stealth:{base:17000,step:140},audible:{base:2000,step:170}};
+let mode='stealth', M=MODES.stealth, tab='tx';
+const F=i=>M.base+i*M.step;
+const enc=new TextEncoder(), dec=new TextDecoder('utf-8');
+
+let ac=null, txAn=null, rxAn=null, stream=null, msrc=null, listening=false, playing=null;
+let fdT=null, fdR=null, tdBuf=null;
+const cv=$('cv'), g2=cv.getContext('2d');
+let W=0,H=0;
+function resize(){const d=window.devicePixelRatio||1;W=cv.width=cv.clientWidth*d;H=cv.height=cv.clientHeight*d;g2.fillStyle='#04040a';g2.fillRect(0,0,W,H)}
+window.addEventListener('resize',resize);
+
+function ensureCtx(){
+  if(!ac){
+    ac=new (window.AudioContext||window.webkitAudioContext)();
+    txAn=ac.createAnalyser();txAn.fftSize=8192;txAn.smoothingTimeConstant=.5;
+    txAn.connect(ac.destination);
+    fdT=new Float32Array(txAn.frequencyBinCount);
+  }
+  return ac.resume();
+}
+
+/* ---------- واجهة: التبويبات والأوضاع ---------- */
+function setTab(t){
+  tab=t;
+  $('tabTx').className=t==='tx'?'on tx':'tx';
+  $('tabRx').className=t==='rx'?'on rx':'rx';
+  $('pTx').classList.toggle('hide',t!=='tx');
+  $('pRx').classList.toggle('hide',t!=='rx');
+}
+$('tabTx').onclick=()=>setTab('tx');
+$('tabRx').onclick=()=>setTab('rx');
+function setMode(m){
+  if(playing)return;
+  mode=m;M=MODES[m];
+  $('mStealth').className=m==='stealth'?'on':'';
+  $('mAudible').className=m==='audible'?'on':'';
+}
+$('mStealth').onclick=()=>setMode('stealth');
+$('mAudible').onclick=()=>setMode('audible');
+
+function capText(t){
+  const out=[];let n=0;
+  for(const c of Array.from(t)){const l=enc.encode(c).length;if(n+l>120)break;n+=l;out.push(c)}
+  return {chars:out,bytes:n};
+}
+$('msg').addEventListener('input',()=>{$('cnt').textContent=enc.encode($('msg').value).length+' / 120 بايت'});
+
+/* ---------- المرسل: تعديل FSK ---------- */
+async function play(items,chars,byteLen){
+  if(playing)return;
+  await ensureCtx();
+  const osc=ac.createOscillator(), g=ac.createGain();
+  osc.type='sine';g.gain.value=0;osc.connect(g);g.connect(txAn);
+  const t0=ac.currentTime+.2;let t=t0;const sch=[];
+  items.forEach(it=>{
+    const f=F(it.s);
+    osc.frequency.setValueAtTime(f,t);
+    g.gain.setValueAtTime(0,t);
+    g.gain.linearRampToValueAtTime(.9,t+.012);     // تنعيم الحواف لمنع الطقطقة
+    g.gain.setValueAtTime(.9,t+it.d-.015);
+    g.gain.linearRampToValueAtTime(0,t+it.d);
+    sch.push({s:it.s,d:it.d,k:it.k,f,t});
+    t+=it.d+GAP;
+  });
+  osc.start(t0-.05);osc.stop(t+.1);
+  playing={sch,t0,end:t,osc,g,chars,byteLen};
+  $('send').disabled=true;$('test').disabled=true;$('stopTx').classList.remove('hide');
+  // عرض الأحرف
+  const box=$('chars');box.innerHTML='';
+  if(chars){let off=0;chars.forEach(c=>{const l=enc.encode(c).length;const s=document.createElement('span');s.textContent=c;s.dataset.o=off;s.dataset.n=l;off+=l;box.appendChild(s)});
+    const k=document.createElement('span');k.textContent='CHK';k.dataset.o=byteLen;k.dataset.n=1;box.appendChild(k)}
+  osc.onended=()=>endTx();
+}
+function endTx(){
+  if(!playing)return;
+  try{playing.osc.disconnect();playing.g.disconnect()}catch(e){}
+  playing=null;
+  $('send').disabled=false;$('test').disabled=false;$('stopTx').classList.add('hide');
+  $('cur').textContent='✓';$('curHz').textContent='انتهى البث';$('prog').style.width='100%';
+}
+$('send').onclick=()=>{
+  const raw=$('msg').value;if(!raw.trim()){$('msg').focus();return}
+  const {chars}=capText(raw);
+  const bytes=Array.from(enc.encode(chars.join('')));
+  let sum=0;bytes.forEach(b=>sum=(sum+b)&255);            // بايت فحص (Checksum)
+  const all=bytes.concat([sum]);
+  const items=[{s:START,d:LONG_MS,k:-1}];
+  all.forEach((b,i)=>{items.push({s:b>>4,d:SYM_MS,k:i},{s:b&15,d:SYM_MS,k:i})});
+  items.push({s:END,d:LONG_MS,k:-1});
+  play(items,chars,bytes.length);
+};
+$('test').onclick=()=>play([{s:8,d:1.2,k:-1}],null,0);
+$('stopTx').onclick=()=>{if(playing){try{playing.osc.stop()}catch(e){}}endTx()};
+
+/* ---------- المستقبل: رادار FFT وفك التشفير ---------- */
+let extra=0, calibUntil=0, calibMax=0;
+let cur=null, lastPresent=0, mism=0, recv=false, nibs=[], lastSym=0;
+let uiT=0;
+
+$('listen').onclick=async()=>{
+  if(listening){stopRx();return}
+  try{
+    await ensureCtx();
+    stream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:false}});
+  }catch(e){
+    $('status').innerHTML='<span class="bad">تعذر الوصول للميكروفون: '+(e.name||'خطأ')+'. تأكد من الصلاحية ومن استخدام HTTPS.</span>';return;
+  }
+  rxAn=ac.createAnalyser();rxAn.fftSize=8192;rxAn.smoothingTimeConstant=0;
+  fdR=new Float32Array(rxAn.frequencyBinCount);tdBuf=new Float32Array(rxAn.fftSize);
+  msrc=ac.createMediaStreamSource(stream);msrc.connect(rxAn);   // لا نوصله بالسماعة
+  listening=true;recv=false;cur=null;nibs=[];
+  $('listen').textContent='إيقاف الرادار';$('listen').className='btn r';$('calib').disabled=false;
+  $('status').textContent='الرادار يعمل... بانتظار نغمة البداية.';
+};
+function stopRx(){
+  listening=false;
+  try{msrc.disconnect()}catch(e){}
+  if(stream)stream.getTracks().forEach(t=>t.stop());
+  stream=null;rxAn=null;
+  $('listen').textContent='تشغيل الرادار';$('listen').className='btn g';$('calib').disabled=true;
+  $('status').textContent='الرادار متوقف.';
+  $('hz').textContent=$('db').textContent=$('snr').textContent='---';
+}
+$('calib').onclick=()=>{
+  calibMax=0;calibUntil=performance.now()+1500;
+  $('status').textContent='جاري المعايرة... التزم الهدوء لمدة ثانية ونصف.';
+};
+const cl=v=>v<-140?-140:v;
+
+function dominant(c){let b=null,n=0;for(const k in c.votes){if(c.votes[k]>n){n=c.votes[k];b=+k}}return b}
+function commit(){
+  if(cur&&cur.n>=2){const s=dominant(cur);if(s!==null)onSym(s)}
+  cur=null;mism=0;
+}
+function onSym(s,now=performance.now()){
+  lastSym=now;
+  if(s===START){recv=true;nibs=[];$('status').innerHTML='<span class="ok">تم التقاط نغمة البداية - جاري استقبال البيانات...</span>';$('live').textContent='';return}
+  if(!recv)return;
+  if(s===END){finish();return}
+  nibs.push(s);
+  const nb=Math.floor(nibs.length/2), by=[];
+  for(let i=0;i<nb;i++)by.push(nibs[2*i]<<4|nibs[2*i+1]);
+  $('live').textContent='▌'+dec.decode(new Uint8Array(by.slice(0,-1)))+'  ['+by.length+' بايت]';
+}
+function finish(){
+  recv=false;
+  if(nibs.length%2||nibs.length<4){$('status').innerHTML='<span class="bad">رسالة تالفة، أعد الإرسال.</span>';return}
+  const by=[];for(let i=0;i<nibs.length;i+=2)by.push(nibs[i]<<4|nibs[i+1]);
+  const chk=by.pop();let sum=0;by.forEach(b=>sum=(sum+b)&255);
+  const ok=sum===chk, txt=dec.decode(new Uint8Array(by));
+  $('live').textContent='';
+  const rb=$('rxbox');rb.textContent=txt;rb.style.color=ok?'':'#ff0055';
+  const m=document.createElement('div');m.className='msg';
+  const sp=document.createElement('span');sp.textContent=txt;m.appendChild(sp);
+  const sm=document.createElement('small');sm.className=ok?'ok':'bad';
+  sm.textContent=(ok?'✓ فحص السلامة ناجح':'✗ فشل فحص السلامة (قد تكون الرسالة مشوهة)')+' - '+new Date().toLocaleTimeString('ar-EG');
+  m.appendChild(sm);$('log').prepend(m);
+  $('status').innerHTML=ok?'<span class="ok">اكتملت الرسالة بنجاح.</span>':'<span class="bad">اكتملت الرسالة لكن فحص السلامة فشل.</span>';
+  if(ok){document.body.classList.remove('flash');void document.body.offsetWidth;document.body.classList.add('flash')}
+  if(navigator.vibrate)navigator.vibrate(ok?[120,60,120]:[300]);
+}
+
+let rxInfo={present:false,f:0,pk:-140,diff:0,lo:0,hi:0};
+function rxStep(now){
+  rxAn.getFloatFrequencyData(fdR);
+  const bh=ac.sampleRate/rxAn.fftSize;
+  const lo=Math.max(2,Math.floor((M.base-M.step)/bh));
+  const hi=Math.min(fdR.length-3,Math.ceil((F(NT-1)+M.step)/bh));
+  let pk=-1e9,pi=lo;
+  for(let i=lo;i<=hi;i++){const v=cl(fdR[i]);if(v>pk){pk=v;pi=i}}
+  const sl=fdR.slice(lo,hi+1).map(cl).sort(), med=sl[sl.length>>1];
+  const diff=pk-med;
+  const a=cl(fdR[pi-1]),b=cl(fdR[pi]),c=cl(fdR[pi+1]),den=a-2*b+c;
+  const p=den?Math.max(-.5,Math.min(.5,.5*(a-c)/den)):0;
+  const f=(pi+p)*bh;
+  if(calibUntil){
+    calibMax=Math.max(calibMax,diff);
+    if(now>calibUntil){calibUntil=0;extra=Math.max(0,calibMax+6-18);$('status').textContent='تمت المعايرة. عتبة الكشف الحالية: '+(18+extra).toFixed(0)+' dB فوق الضوضاء.'}
+  }
+  const present=diff>18+extra&&pk>-95;
+  const idx=Math.round((f-M.base)/M.step);
+  const valid=present&&idx>=0&&idx<NT&&Math.abs(f-F(idx))<M.step*.4;
+  if(valid){
+    lastPresent=now;
+    if(!cur)cur={votes:{},n:0};
+    const dm=dominant(cur);
+    if(dm!==null&&dm!==idx){
+      if(++mism>=3){commit();cur={votes:{[idx]:1},n:1};mism=0}
+    }else{mism=0;cur.votes[idx]=(cur.votes[idx]||0)+1;cur.n++}
+  }else if(cur&&now-lastPresent>30){commit()}
+  if(recv&&now-lastSym>4000){recv=false;$('status').innerHTML='<span class="bad">انقطع الإرسال (مهلة 4 ثوانٍ). أعد المحاولة.</span>'}
+  rxInfo={present,f,pk,diff,lo,hi};
+  if(now-uiT>90){
+    uiT=now;
+    $('hz').textContent=present?f.toFixed(0):'---';
+    $('db').textContent=pk.toFixed(0);
+    $('snr').textContent=diff.toFixed(0)+' dB';
+    $('hz').style.color=present?'#00ff9d':'#6b7a90';
+  }
+}
+
+/* ---------- الرسم: مطياف دائري + شكل موجي ---------- */
+function drawViz(an,fd,col,active,info){
+  g2.fillStyle='rgba(4,4,10,.3)';g2.fillRect(0,0,W,H);
+  const cx=W/2,cy=H*.43,R=Math.min(W,H)*.2,d=window.devicePixelRatio||1;
+  g2.lineWidth=2*d;g2.lineCap='round';
+  g2.strokeStyle='rgba('+col+',.18)';g2.beginPath();g2.arc(cx,cy,R-6*d,0,6.2832);g2.stroke();
+  if(an){
+    an.getFloatFrequencyData(fd);
+    const bh=ac.sampleRate/an.fftSize;
+    const lo=Math.max(2,Math.floor((M.base-M.step)/bh)),hi=Math.min(fd.length-1,Math.ceil((F(NT-1)+M.step)/bh));
+    const N=140;
+    for(let k=0;k<N;k++){
+      const bin=lo+Math.floor(k*(hi-lo)/N);
+      const v=Math.max(0,Math.min(1,(cl(fd[bin])+105)/65));
+      const ang=k/N*6.2832-1.5708, r1=R+v*R*.95;
+      g2.strokeStyle='rgba('+(v>.8?'255,0,85':col)+','+(.2+v*.8)+')';
+      g2.beginPath();g2.moveTo(cx+Math.cos(ang)*R,cy+Math.sin(ang)*R);g2.lineTo(cx+Math.cos(ang)*r1,cy+Math.sin(ang)*r1);g2.stroke();
+    }
+    if(info&&info.present){
+      g2.fillStyle='rgba(255,0,85,.25)';g2.beginPath();g2.arc(cx,cy,R*.6,0,6.2832);g2.fill();
+    }
+    // موجة الزمن
+    if(!tdBuf||tdBuf.length!==an.fftSize)tdBuf=new Float32Array(an.fftSize);
+    an.getFloatTimeDomainData(tdBuf);
+    g2.strokeStyle='rgba('+col+',.9)';g2.lineWidth=1.5*d;g2.beginPath();
+    const n=256,step=Math.floor(tdBuf.length/n),y0=H*.9;
+    for(let i=0;i<n;i++){const x=i/(n-1)*W,y=y0-Math.max(-1,Math.min(1,tdBuf[i*step]*5))*H*.07;i?g2.lineTo(x,y):g2.moveTo(x,y)}
+    g2.stroke();
+  }else{
+    g2.strokeStyle='rgba('+col+',.25)';g2.beginPath();g2.moveTo(0,H*.9);g2.lineTo(W,H*.9);g2.stroke();
+  }
+  g2.fillStyle='rgba('+col+',.85)';g2.font=(12*d)+'px Fira Code, monospace';g2.textAlign='center';
+  const t=an?(tab==='tx'?'TX '+(playing?'ACTIVE':''):(info&&info.present?'SIGNAL '+info.f.toFixed(0)+' Hz':'SCANNING')):'IDLE';
+  g2.fillText(t,cx,cy+4*d);
+  g2.textAlign='left';g2.fillStyle='rgba(107,122,144,.9)';
+  g2.fillText((M.base/1000).toFixed(1)+'k - '+(F(NT-1)/1000).toFixed(1)+'k Hz',10*d,18*d);
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  const now=performance.now();
+  if(listening&&rxAn)rxStep(now);
+  // تحديث شاشة المرسل
+  if(playing){
+    const tc=ac.currentTime;
+    const it=playing.sch.find(x=>tc>=x.t&&tc<x.t+x.d);
+    if(it){
+      $('cur').textContent=it.s===START?'START':it.s===END?'END':it.s.toString(16).toUpperCase();
+      $('curHz').textContent=it.f+' Hz';
+      document.querySelectorAll('#chars span').forEach(s=>{
+        const o=+s.dataset.o,n=+s.dataset.n;
+        s.className=it.k>=o&&it.k<o+n?'on':(it.k>=o+n||it.k===-1&&tc>playing.t0+.5?'done':'');
+      });
+    }
+    $('prog').style.width=Math.min(100,Math.max(0,(tc-playing.t0)/(playing.end-playing.t0)*100))+'%';
+  }
+  if(tab==='tx')drawViz(playing?txAn:null,fdT,'0,243,255',!!playing,null);
+  else drawViz(listening?rxAn:null,fdR,'0,255,157',listening,rxInfo);
+}
+resize();
+requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
